@@ -128,7 +128,7 @@ class YouTubeDownloaderApp:
         frame.pack(expand=True, fill="both")
         
         tk.Label(frame, text="Contact Us", font=('Helvetica', 16, 'bold')).pack(pady=10)
-        contact_text = "For any inquiries, please contact us at: support@example.com"
+        contact_text = "For any inquiries, please contact us at: sudipkc289@gmail.com"
         tk.Label(frame, text=contact_text, wraplength=600, justify=tk.LEFT).pack(pady=10)
 
         self.frames["Contact"] = frame
