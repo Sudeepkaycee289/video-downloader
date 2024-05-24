@@ -83,35 +83,6 @@ class YouTubeDownloaderApp:
 
         self.frames["History"] = frame
 
-
-    # Styles for buttons
-    def create_nav_frame(self):
-        self.nav_frame = tk.Frame(self.root)
-        self.nav_frame.pack(side=tk.TOP, fill=tk.X)
-
-        # Define a style for the buttons
-        style = ttk.Style()
-        style.configure("Nav.TButton", background="#2BF40B", foreground="black", font=("Helvetica", 10), padding=10)
-        style.map("Nav.TButton", 
-                  background=[("active", "#45a049"), ("!active", "#2BF40B")],
-                  foreground=[("active", "black"), ("!active", "black")])  # Change background color on hover
-
-        main_button = ttk.Button(self.nav_frame, text="Main", style="Nav.TButton", command=lambda: self.show_frame("Main"))
-        main_button.pack(side=tk.LEFT, padx=10, pady=10)
-
-        history_button = ttk.Button(self.nav_frame, text="History", style="Nav.TButton", command=lambda: self.show_frame("History"))
-        history_button.pack(side=tk.LEFT, padx=10, pady=10)
-
-        about_button = ttk.Button(self.nav_frame, text="About Us", style="Nav.TButton", command=lambda: self.show_frame("About"))
-        about_button.pack(side=tk.LEFT, padx=10, pady=10)
-
-        contact_button = ttk.Button(self.nav_frame, text="Contact Us", style="Nav.TButton", command=lambda: self.show_frame("Contact"))
-        contact_button.pack(side=tk.LEFT, padx=10, pady=10)
-
-
-
-    # ##########################################################################
-
     def create_about_frame(self):
         frame = tk.Frame(self.root)
         frame.pack(expand=True, fill="both")
