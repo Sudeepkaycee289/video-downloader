@@ -1,17 +1,21 @@
 import os
+import json
 import PySimpleGUI as sg
 from pytube import YouTube
 from moviepy.editor import AudioFileClip
 from datetime import timedelta
 import threading
 import subprocess
+import tkthread  # Import tkthread
+
+HISTORY_FILE = "download_history.json"
 
 class YouTubeDownloaderApp:
     def __init__(self):
-        self.history = []  # List to keep track of download history
+        self.history = self.load_history()  # Load history from file
         self.layout = self.create_layout()  # Create the GUI layout
         self.window = sg.Window("YouTube to MP3/MP4 Downloader", self.layout, size=(700, 500))
-        self.run()  # Run the main event loop
+        tkthread.call(self.run)  # Run the main event loop within tkthread context
 
     def create_layout(self):
         sg.theme('DarkBlue3')  # Use a modern theme
@@ -20,8 +24,10 @@ class YouTubeDownloaderApp:
         nav_buttons = [
             sg.Button("Main", key="Main", size=(10, 1)),
             sg.Button("History", key="History", size=(10, 1)),
+            sg.Button("Downloading", key="Downloading", size=(10, 1)),
             sg.Button("About Us", key="About", size=(10, 1)),
             sg.Button("Contact Us", key="Contact", size=(10, 1))
+    
         ]
 
         # Main frame layout
@@ -31,14 +37,20 @@ class YouTubeDownloaderApp:
             [sg.Text("Save Location:")],
             [sg.InputText(key="save_location"), sg.FolderBrowse()],
             [sg.Text("Select Format:")],
-            [sg.Combo(["MP3", "MP4"], default_value="MP3", key="format", readonly=True)],  # Dropdown to select format
+            [sg.Combo(["MP3", "MP4"], default_value="MP3", key="format")],  # Dropdown to select format
             [sg.Button("Download", key="Download")]
         ]
 
         # History frame layout
         history_layout = [
             [sg.Text("Download History", font=('Helvetica', 16, 'bold'))],
-            [sg.Table(values=[], headings=["Filename", "YouTube Link", "Duration"], auto_size_columns=True, key="history_table", num_rows=10)]
+            [sg.Table(values=self.history, headings=["Filename", "YouTube Link", "Duration"], auto_size_columns=True, key="history_table", num_rows=10)]
+        ]
+
+        # Downloading progress layout
+        downloading_layout = [
+            [sg.Text("Downloading Progress", font=('Helvetica', 16, 'bold'))],
+            [sg.ProgressBar(100, orientation='h', size=(20, 20), key='progress_bar')]
         ]
 
         # About frame layout
@@ -58,6 +70,7 @@ class YouTubeDownloaderApp:
         frames = {
             "Main": main_layout,
             "History": history_layout,
+            "Downloading": downloading_layout,
             "About": about_layout,
             "Contact": contact_layout
         }
@@ -67,6 +80,7 @@ class YouTubeDownloaderApp:
             nav_buttons,
             [sg.Column(frames["Main"], key="Main_frame", visible=True),
              sg.Column(frames["History"], key="History_frame", visible=False),
+             sg.Column(frames["Downloading"], key="Downloading_frame", visible=False),
              sg.Column(frames["About"], key="About_frame", visible=False),
              sg.Column(frames["Contact"], key="Contact_frame", visible=False)]
         ]
@@ -80,7 +94,7 @@ class YouTubeDownloaderApp:
             if event == sg.WIN_CLOSED:
                 break
 
-            if event in ["Main", "History", "About", "Contact"]:
+            if event in ["Main", "History", "Downloading", "About", "Contact"]:
                 self.show_frame(event)
 
             if event == "Download":
@@ -92,7 +106,7 @@ class YouTubeDownloaderApp:
         self.window.close()
 
     def show_frame(self, frame_name):
-        frames = ["Main", "History", "About", "Contact"]
+        frames = ["Main", "History","Downloading", "About", "Contact"]
         for frame in frames:
             self.window[f"{frame}_frame"].update(visible=(frame == frame_name))
 
@@ -105,11 +119,11 @@ class YouTubeDownloaderApp:
 
     def download(self, url, save_location, file_format):
         if not url:
-            sg.popup_warning("Please enter a YouTube URL")
+            tkthread.call(sg.popup_warning, "Please enter a YouTube URL")  # Ensure popup runs in main thread
             return
 
         if not save_location:
-            sg.popup_warning("Please select a save location")
+            tkthread.call(sg.popup_warning, "Please select a save location")  # Ensure popup runs in main thread
             return
 
         try:
@@ -133,15 +147,29 @@ class YouTubeDownloaderApp:
                 final_file = video.download(output_path=save_location)
 
             duration = str(timedelta(seconds=int(yt.length)))
-            self.history.append((os.path.basename(final_file), url, duration))
+            self.history.insert(0, (os.path.basename(final_file), url, duration))
+            self.save_history()  # Save the updated history
 
-            sg.popup("Success", f"Downloaded and converted to {file_format}: {final_file}")
+            tkthread.call(sg.popup, "Success", f"Downloaded and converted to {file_format}: {final_file}")  # Ensure popup runs in main thread
+            tkthread.call(self.update_history)  # Ensure history update runs in main thread
         except Exception as e:
-            sg.popup_error(f"Error: {str(e)}")
+            tkthread.call(sg.popup_error, f"Error: {str(e)}")  # Ensure popup runs in main thread
 
     def update_history(self):
         history_data = self.history
         self.window["history_table"].update(values=history_data)
+
+    def save_history(self):
+        # Save the history to a JSON file
+        with open(HISTORY_FILE, "w") as f:
+            json.dump(self.history, f)
+
+    def load_history(self):
+        # Load the history from the JSON file if it exists
+        if os.path.exists(HISTORY_FILE):
+            with open(HISTORY_FILE, "r") as f:
+                return json.load(f)
+        return []
 
 def check_ffmpeg():
     try:
