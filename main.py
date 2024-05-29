@@ -9,7 +9,6 @@ from datetime import timedelta
 import threading
 import subprocess
 
-
 HISTORY_FILE = "download_history.json"
 
 class YouTubeDownloaderApp:
@@ -63,10 +62,10 @@ class YouTubeDownloaderApp:
         tk.Button(self.main_frame, text="Download", command=self.download_thread).pack(pady=20)
 
         # Downloading frame
-        self.downloading_frame = tk.Frame(self.root)
-        tk.Label(self.downloading_frame, text="Downloading", font=('Helvetica', 16, 'bold')).pack(pady=5)
-
-        self.progressbar = Progressbar(self.downloading_frame, orient="horizontal", length=300, mode="determinate")
+        self.download_frame = tk.Frame(self.root)
+        tk.Label(self.download_frame, text="Downloading", font=('Helvetica', 16, 'bold')).pack(pady=5)
+        self.progressbar = Progressbar(self.download_frame, orient="horizontal", length=300, mode="determinate")
+        self.progressbar.pack(pady=20)
 
         # History frame
         self.history_frame = tk.Frame(self.root)
@@ -103,13 +102,10 @@ class YouTubeDownloaderApp:
         self.hide_frames()
         self.history_frame.pack(fill=tk.BOTH, expand=1)
         self.update_history()
+
     def show_download(self):
         self.hide_frames()
         self.download_frame.pack(fill=tk.BOTH, expand=1)
-    def show_history(self):
-        self.hide_frames()
-        self.history_frame.pack(fill=tk.BOTH, expand=1)
-        self.update_history()
 
     def show_about(self):
         self.hide_frames()
@@ -124,6 +120,7 @@ class YouTubeDownloaderApp:
         self.history_frame.pack_forget()
         self.about_frame.pack_forget()
         self.contact_frame.pack_forget()
+        self.download_frame.pack_forget()
 
     def browse_save_location(self):
         folder_selected = filedialog.askdirectory()
@@ -146,9 +143,11 @@ class YouTubeDownloaderApp:
             messagebox.showwarning("Warning", "Please select a save location")
             return
 
+        self.root.after(0, self.show_download)
+        self.progressbar['value'] = 0
+
         try:
-            yt = YouTube(url)
-            
+            yt = YouTube(url, on_progress_callback=self.progress_callback)
             if file_format == "MP3":
                 video = yt.streams.filter(only_audio=True).first()
                 out_file = video.download(output_path=save_location)
@@ -172,8 +171,17 @@ class YouTubeDownloaderApp:
 
             messagebox.showinfo("Success", f"Downloaded and converted to {file_format}: {final_file}")
             self.update_history()
+            self.root.after(0, self.show_main)
         except Exception as e:
             messagebox.showerror("Error", f"Error: {str(e)}")
+            self.root.after(0, self.show_main)
+
+    def progress_callback(self, stream, chunk, bytes_remaining):
+        total_size = stream.filesize
+        bytes_downloaded = total_size - bytes_remaining
+        percentage_of_completion = bytes_downloaded / total_size * 100
+        print (percentage_of_completion)
+        self.progressbar['value'] = percentage_of_completion
 
     def update_history(self):
         for row in self.history_table.get_children():
